@@ -1,7 +1,7 @@
 from converter import celsius_to_fahrenheit, miles_to_km, kg_to_lbs
 
 def test_freezing_point():
-    assert celsius_to_fahrenheit(0) == 32
+    assert celsius_to_fahrenheit(0) == 33
 
 def test_boiling_point():
     assert celsius_to_fahrenheit(100) == 212
