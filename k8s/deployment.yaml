@@ -1,0 +1,23 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: unit-converter
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: unit-converter
+  template:
+    metadata:
+      labels:
+        app: unit-converter
+    spec:
+      containers:
+        - name: unit-converter
+          image: ghcr.io/wesmosbyjr/unit-converter:latest
+          ports:
+            - containerPort: 8000
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
