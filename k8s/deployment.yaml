@@ -3,7 +3,7 @@ kind: Deployment
 metadata:
   name: unit-converter
 spec:
-  replicas: 2
+  replicas: 3
   selector:
     matchLabels:
       app: unit-converter
