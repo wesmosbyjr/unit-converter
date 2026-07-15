@@ -12,13 +12,25 @@ def health():
 
 @app.route("/convert/temperature")
 def convert_temperature():
-    celsius = float(request.args.get("celsius"))
+    raw = request.args.get("celsius")
+    if raw is None:
+        return jsonify(error="missing required parameter: celsius"), 400
+    try:
+        celsius = float(raw)
+    except ValueError:
+        return jsonify(error=f"celsius must be a number, got {raw}"), 400
     return jsonify(celsius=celsius, fahrenheit=celsius_to_fahrenheit(celsius))
 
 
 @app.route("/convert/distance")
 def convert_distance():
-    miles = float(request.args.get("miles"))
+    raw = request.args.get("miles")
+    if raw is None:
+        return jsonify(error="missing required parameter: miles"), 400
+    try:
+        miles = float(raw)
+    except ValueError:
+        return jsonify(error=f"miles must be a number, got {raw}"), 400
     return jsonify(miles=miles, km=miles_to_km(miles))
 
 
