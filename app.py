@@ -1,9 +1,10 @@
 from flask import Flask, jsonify, request
 
 from converter import celsius_to_fahrenheit, miles_to_km
+from prometheus_flask_exporter import PrometheusMetrics
 
 app = Flask(__name__)
-
+metrics = PrometheusMetrics(app)
 
 @app.route("/health")
 def health():
@@ -18,7 +19,7 @@ def convert_temperature():
     try:
         celsius = float(raw)
     except ValueError:
-        return jsonify(error=f"celsius must be a number, got {raw}"), 400
+        return jsonify(error=f"celsius must be a number, got '{raw}'"), 400
     return jsonify(celsius=celsius, fahrenheit=celsius_to_fahrenheit(celsius))
 
 
@@ -30,7 +31,7 @@ def convert_distance():
     try:
         miles = float(raw)
     except ValueError:
-        return jsonify(error=f"miles must be a number, got {raw}"), 400
+        return jsonify(error=f"miles must be a number, got '{raw}"), 400
     return jsonify(miles=miles, km=miles_to_km(miles))
 
 
