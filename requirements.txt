@@ -2,3 +2,4 @@ flask
 gunicorn
 pytest
 ruff
+prometheus-flask-exporter
