@@ -121,7 +121,20 @@ kind create cluster --name learn
 
 # 2. App (Argo CD will manage this from Git, but the first sync needs the CRDs first)
 kubectl create namespace argocd
-kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+kubectl apply -n argocd --server-side -f https://raw.githubusercontent.com/argoproj/argo-cd/v3.4.5/manifests/install.yaml 2>&1 | tee argocd-install.log
+
+# 2a. CHECKPOINT — verify the install completed before proceeding
+kubectl get crds | grep argoproj
+# → expect exactly 3: applications, applicationsets, appprojects
+
+kubectl get pods -n argocd
+# → expect 7 pods, all Running (image pulls take ~1–2 min on a fresh cluster;
+#   watch with: kubectl get pods -n argocd -w)
+
+# Do NOT proceed to step 3 until both checks pass. The install manifest is
+# large and kubectl apply is not atomic — a single failed resource scrolls
+# past easily. (This exact miss caused a partial install on 2026-07-17;
+# see install log habit in step 2.)
 
 # 3. Point Argo at this repo
 kubectl apply -f argocd/application.yaml
@@ -131,8 +144,9 @@ kubectl apply -f argocd/application.yaml
 helm repo add grafana https://grafana.github.io/helm-charts
 helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
 helm repo update
-helm install loki grafana/loki-stack -n monitoring --create-namespace --set grafana.enabled=true
-helm install prometheus prometheus-community/prometheus -n monitoring -f helm/prometheus-values.yaml
+helm install loki grafana/loki-stack -n monitoring --create-namespace --set grafana.enabled=true --version 2.10.3
+helm install prometheus prometheus-community/prometheus -n monitoring -f helm/prometheus-values.yaml --version 29.17.0
+# Chart versions pinned to the versions verified working 2026-07-17; bump deliberately, not implicitly
 
 # 5. Credentials
 
@@ -144,6 +158,11 @@ kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.pas
 #Grafana
 kubectl get secret -n monitoring loki-grafana -o jsonpath="{.data.admin-password}" | base64 -d
 
+# 5a. CHECKPOINT — wait for Argo's first sync before port-forwarding the app
+kubectl get pods -l app=unit-converter
+# → expect Running. Argo's sync is async — the Application can show in the UI
+#   before pods exist. If nothing is listed yet, watch with -w or check
+#   sync status: kubectl get applications -n argocd
 
 # 6. Access (each in its own terminal)
 kubectl port-forward svc/argocd-server -n argocd 8080:443     # Argo UI  (admin / see secret below)
@@ -156,10 +175,29 @@ In grafana UI: Connections → Data sources → Add data source → Prometheus. 
 
     http://prometheus-server.monitoring.svc.cluster.local
 
-→ Save & Test should report success.  (This configuration lives only in Grafana's internal storage, not in Git — it lives in Grafana's storage, not in Git, which is why it needs a runbook step.)
+→ Save & Test should report success.  (This configuration lives only in Grafana's internal storage, not in Git — which is why it needs a runbook step. See "What is NOT in Git" below.)
 
+# 8. Import the dashboard
+In Grafana UI: Dashboards → New → Import → upload grafana/dashboards/unit-converter.json
+(Dashboard is version-controlled; only the *import* is manual. Automating the
+import via chart provisioning is a planned extension — see What is NOT in Git.)
 
-Both UIs use user 'admin'; extract the generated passwords:
+## What is NOT in Git
+
+Everything above the line survives `kind delete cluster` because Argo or Helm
+reapplies it from this repo. These do not — they die with the cluster and are
+recreated manually per the steps noted:
+
+| Item                        | Recreated by | Path to zero                        |
+|-----------------------------|--------------|-------------------------------------|
+| Grafana Prometheus datasource | Step 7     | Chart values provisioning (planned) |
+| Grafana dashboard           | Step 8       | Chart values provisioning (planned) |
+| Argo CD admin password      | Step 5       | Acceptable — secrets shouldn't be in Git |
+| install log (argocd-install.log) | Step 2  | Acceptable — ephemeral evidence     |
+
+Discovered via teardown-rebuild drill, 2026-07-17: everything in Git came back
+by itself; everything in this table did not. The goal is for the "planned"
+rows to reach zero — at which point rebuild = run this file, no UI clicks.
 
 
 ## What I'd do next
