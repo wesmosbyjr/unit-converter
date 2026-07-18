@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
         - name: unit-converter
-          image: ghcr.io/wesmosbyjr/unit-converter:2a4018c9e128f09fb1d724071cb8e13ef7ef8a4a
+          image: ghcr.io/wesmosbyjr/unit-converter:2888efcd04adb78c99576777c0aadf00dc11219a
           ports:
             - containerPort: 8000
           readinessProbe:
