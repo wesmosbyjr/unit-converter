@@ -51,7 +51,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         with:
-          token: ${{ secrets.REPO_TOKEN != '' && secrets.REPO_TOKEN || github.token }}
+          token: ${{ secrets.REPO_TOKEN || github.token }}
 
       - name: Pin deployment image to current commit SHA
         run: |
@@ -60,7 +60,7 @@ jobs:
       - name: Create branch and PR for image pin update
         uses: peter-evans/create-pull-request@v7
         with:
-          token: ${{ secrets.REPO_TOKEN != '' && secrets.REPO_TOKEN || github.token }}
+          token: ${{ secrets.REPO_TOKEN || github.token }}
           branch: chore/pin-image-${{ github.sha }}
           base: main
           commit-message: "chore: pin deployment image to ${{ github.sha }} [skip ci]"
