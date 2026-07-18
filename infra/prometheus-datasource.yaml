@@ -9,9 +9,9 @@ data:
   prometheus.yaml: |-
     apiVersion: 1
     datasources:
-      - name: Prometheus
+      - name: Prometheus-App
         type: prometheus
         uid: prometheus
         access: proxy
         url: http://prometheus-server.monitoring:80
-        isDefault: true
+        isDefault: false
