@@ -235,3 +235,5 @@ gates.
 
 **Hand-rolled validation.** (Per the incident writeup.) Remedy: pydantic models.
 Would prove: declarative contracts at the input layer.
+
+Thanks!
