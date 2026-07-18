@@ -144,7 +144,7 @@ kubectl apply -f argocd/application.yaml
 helm repo add grafana https://grafana.github.io/helm-charts
 helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
 helm repo update
-helm install loki grafana/loki-stack -n monitoring --create-namespace --set grafana.enabled=true --version 2.10.3
+helm install loki grafana/loki-stack -n monitoring --create-namespace -f infra/loki-values.yaml --version 2.10.3
 helm install prometheus prometheus-community/prometheus -n monitoring -f helm/prometheus-values.yaml --version 29.17.0
 # Chart versions pinned to the versions verified working 2026-07-17; bump deliberately, not implicitly
 
@@ -166,21 +166,20 @@ kubectl get pods -l app=unit-converter
 
 # 6. Access (each in its own terminal)
 kubectl port-forward svc/argocd-server -n argocd 8080:443     # Argo UI  (admin / see secret below)
-kubectl port-forward -n monitoring service/loki-grafana 3000:80   # Grafana
+kubectl port-forward -n monitoring service/loki-grafana 3001:80   # Grafana
 kubectl port-forward service/unit-converter 9000:80           # the app
 
-# 7.  Manually add Prometheus datasource to Grafana
+# 7. Verify the reprovisioned Grafana datasource
 
-In grafana UI: Connections → Data sources → Add data source → Prometheus. Set URL to:
+The Prometheus datasource is now defined declaratively in repo-managed ConfigMap
+provisioning under k8s/prometheus-datasource.yaml. After the Helm install/upgrade,
+Grafana should discover it automatically.
 
-    http://prometheus-server.monitoring.svc.cluster.local
+# 8. Verify the dashboard is present
 
-→ Save & Test should report success.  (This configuration lives only in Grafana's internal storage, not in Git — which is why it needs a runbook step. See "What is NOT in Git" below.)
-
-# 8. Import the dashboard
-In Grafana UI: Dashboards → New → Import → upload grafana/dashboards/unit-converter.json
-(Dashboard is version-controlled; only the *import* is manual. Automating the
-import via chart provisioning is a planned extension — see What is NOT in Git.)
+The dashboard ConfigMap lives under k8s/grafana-dashboard.yaml and is discovered
+by Grafana via the dashboard sidecar. The panel titles should include
+"p95 latency", "Error Rate", and "Request/sec" after the sidecar syncs.
 
 ## What is NOT in Git
 
@@ -190,14 +189,12 @@ recreated manually per the steps noted:
 
 | Item                        | Recreated by | Path to zero                        |
 |-----------------------------|--------------|-------------------------------------|
-| Grafana Prometheus datasource | Step 7     | Chart values provisioning (planned) |
-| Grafana dashboard           | Step 8       | Chart values provisioning (planned) |
 | Argo CD admin password      | Step 5       | Acceptable — secrets shouldn't be in Git |
 | install log (argocd-install.log) | Step 2  | Acceptable — ephemeral evidence     |
 
-Discovered via teardown-rebuild drill, 2026-07-17: everything in Git came back
-by itself; everything in this table did not. The goal is for the "planned"
-rows to reach zero — at which point rebuild = run this file, no UI clicks.
+Discovered via teardown-rebuild drill, 2026-07-17: the Grafana datasource and
+Dashboard are now repo-backed by ConfigMaps under the k8s path. The remaining
+rows here are expected cluster-local artifacts that should stay out of Git.
 
 
 ## What I'd do next
@@ -215,8 +212,10 @@ deliberately avoids.
 **Port-forward access only.** Nothing has a stable address. Remedy: an ingress
 controller. Would prove: production-style traffic entry and L7 routing.
 
-**Config outside Git.** Grafana's datasource and dashboard exist only as manual
-UI state. Remedy: Grafana provisioning (datasources/dashboards as files).
+**Config now in Git.** Grafana's datasource and dashboard are now provisioned
+from repo-managed ConfigMaps under the k8s path. The next refinement would be
+moving this fully into chart-native values/configuration if you want a stricter
+single-source Helm model.
 
 **One environment.** No staging. Remedy: Kustomize overlays with a second Argo
 Application. Would prove: environment promotion within the GitOps model.
