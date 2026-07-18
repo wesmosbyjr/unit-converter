@@ -152,6 +152,11 @@ helm install prometheus prometheus-community/prometheus -n monitoring -f helm/pr
 
 Both UIs use user 'admin'; extract the generated passwords:
 
+For the GitHub Actions image-pin automation to open its PR, add a repository
+secret named `REPO_TOKEN` with permission to create pull requests. The workflow
+falls back to the default GitHub token when that secret is absent, but that path
+will not succeed in repos that block Actions from creating PRs.
+
 #Argo CD
 kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d; echo
 
@@ -166,7 +171,7 @@ kubectl get pods -l app=unit-converter
 
 # 6. Access (each in its own terminal)
 kubectl port-forward svc/argocd-server -n argocd 8080:443     # Argo UI  (admin / see secret below)
-kubectl port-forward -n monitoring service/loki-grafana 3001:80   # Grafana
+kubectl port-forward -n monitoring service/loki-grafana 3000:80   # Grafana
 kubectl port-forward service/unit-converter 9000:80           # the app
 
 # 7. Verify the reprovisioned Grafana datasource
@@ -199,10 +204,11 @@ rows here are expected cluster-local artifacts that should stay out of Git.
 
 ## What I'd do next
 
-**Manual image promotion.** Every code change needs a second PR to pin the new
-SHA — toil I felt repeatedly. Remedy: a CI step that commits the SHA bump to
-the manifest after a successful build (or Argo CD Image Updater). Would prove:
-closing the loop from merge to production in one action.
+**Automated image pinning.** After a successful main-branch build, CI now
+rewrites the deployment manifest to the current commit SHA and opens a PR for
+review. Requirement: a repository secret named `REPO_TOKEN` with permission to
+create pull requests. This closes the loop from merge to production in one
+action, without requiring a human to hand-edit the deployment manifest.
 
 **No real infrastructure.** Single-node kind cluster; nothing survives my
 laptop. Remedy: Terraform-provisioned managed cluster (EKS/GKE). Would prove:
