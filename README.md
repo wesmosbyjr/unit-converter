@@ -153,10 +153,10 @@ helm install prometheus prometheus-community/prometheus -n monitoring -f helm/pr
 Both UIs use user 'admin'; extract the generated passwords:
 
 #Argo CD
-kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
+kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d; echo
 
 #Grafana
-kubectl get secret -n monitoring loki-grafana -o jsonpath="{.data.admin-password}" | base64 -d
+kubectl get secret loki-grafana -n monitoring -o jsonpath="{.data.admin-password}" | base64 -d; echo
 
 # 5a. CHECKPOINT — wait for Argo's first sync before port-forwarding the app
 kubectl get pods -l app=unit-converter
