@@ -1,4 +1,4 @@
-from converter import celsius_to_fahrenheit, miles_to_km, kg_to_lbs
+from converter import celsius_to_fahrenheit, kg_to_lbs, miles_to_km
 
 
 def test_freezing_point():
