@@ -11,6 +11,7 @@ flowchart LR
     Dev[Developer] -->|git push| GH[GitHub PR]
     GH -->|merge to main| CI[GitHub Actions\ntest → lint → build]
     CI -->|push image :sha| REG[(ghcr.io)]
+    CI -->|opens SHA-pin PR| GH
     GH -->|manifest change| ARGO[Argo CD]
     ARGO -->|sync k8s/| K8S[kind cluster\n3× Flask pods]
     REG -->|image pull| K8S
@@ -112,6 +113,28 @@ the 500 filter is silent; the error-rate dashboard classifies bad input as
 4xx, distinct from server failures. A fuller remedy — declarative validation
 via pydantic — is in "What I'd do next."
 
+## An automation, end to end
+
+**The toil.** Every code change required two merges: one for the code,
+then — after CI built the image — a second PR pinning the new SHA in the
+deployment manifest. I ran that loop manually four times in one week.
+
+**The automation.** A workflow step now runs after each successful
+main-branch build: it rewrites the image reference in
+`k8s/deployment.yaml` with the new SHA and pushes the change, which
+Argo CD then deploys. One merge, code to cluster.
+
+**The AI pairing — and the catch.** I built this with Claude Code in
+about 20 minutes. Its first draft was clean, plausible, and would have
+failed: it assumed the default `GITHUB_TOKEN` had permissions this
+repo's model doesn't grant. I caught the blind spot, corrected the
+token strategy [state the one true mechanism here], and documented the
+constraint. The correction loop was the value: the agent multiplied
+speed; environment knowledge was the safety system.
+
+**Verification.** [One merge, watched end to end: bot commit → Argo
+sync → rolling update, no loop-retrigger.]
+
 ## Running it
 
 Prerequisites: Docker Desktop, kind, kubectl, helm.
@@ -203,12 +226,13 @@ rows here are expected cluster-local artifacts that should stay out of Git.
 
 
 ## What I'd do next
-
-**Automated image pinning.** After a successful main-branch build, CI now
-rewrites the deployment manifest to the current commit SHA and opens a PR for
-review. Requirement: a repository secret named `REPO_TOKEN` with permission to
-create pull requests. This closes the loop from merge to production in one
-action, without requiring a human to hand-edit the deployment manifest.
+**~~Manual image promotion~~ ✅ Shipped — automated image pinning.** After a
+successful main-branch build, CI rewrites the deployment manifest to the new
+commit SHA and opens a pull request for review — SHA hunted, manifest edited,
+PR opened by the pipeline; a human approval is the only remaining step, by
+design. (Requires a repository secret `REPO_TOKEN` with pull-request
+permissions — the default `GITHUB_TOKEN` doesn't grant them in this repo's
+model.)
 
 **No real infrastructure.** Single-node kind cluster; nothing survives my
 laptop. Remedy: Terraform-provisioned managed cluster (EKS/GKE). Would prove:
