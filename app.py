@@ -1,7 +1,7 @@
 from flask import Flask, jsonify, request
+from prometheus_flask_exporter import PrometheusMetrics
 
 from converter import celsius_to_fahrenheit, miles_to_km
-from prometheus_flask_exporter import PrometheusMetrics
 
 app = Flask(__name__)
 metrics = PrometheusMetrics(app)
